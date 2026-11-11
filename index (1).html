@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="gu"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Waghodia Jan Samvad</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f6f8fb;--c:#fff;--t:#16202e;--m:#5b6676;--p:#e8590c;--b:#e1e6ee}
+@media(prefers-color-scheme:dark){:root{--bg:#10151d;--c:#1a212c;--t:#eef2f7;--m:#a0aab8;--b:#2b3441}}
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,"Noto Sans Gujarati",sans-serif;background:var(--bg);color:var(--t)}
+header{background:var(--c);border-bottom:1px solid var(--b);position:sticky;top:0;z-index:1000}
+.w{max-width:960px;margin:auto;padding:12px 16px}.top{display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:700;color:var(--p);font-size:18px}
+nav{display:flex;gap:6px;overflow-x:auto;padding-top:8px}
+nav a,.lang button{white-space:nowrap;padding:6px 12px;border-radius:99px;border:1px solid var(--b);color:var(--t);text-decoration:none;font-size:14px;background:none;cursor:pointer}
+nav a.on,.lang button.on{background:var(--p);color:#fff;border-color:var(--p)}
+.card{background:var(--c);border:1px solid var(--b);border-radius:12px;padding:16px;margin:12px 0}
+h1{font-size:26px;margin:8px 0}h2{font-size:20px;margin:4px 0 10px}
+.btn{display:inline-block;background:var(--p);color:#fff;border:0;border-radius:10px;padding:14px 20px;font-size:17px;font-weight:600;text-decoration:none;cursor:pointer;width:100%;text-align:center}
+.btn.s{width:auto;padding:8px 14px;font-size:14px}
+label{display:block;margin:12px 0 4px;font-weight:600;font-size:14px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--b);border-radius:10px;font:inherit;background:var(--bg);color:var(--t)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:600px){.g4{grid-template-columns:repeat(4,1fr)}}
+.stat{text-align:center}.stat b{font-size:30px;display:block;color:var(--p)}
+.m{color:var(--m);font-size:14px}
+.steps{display:flex;gap:4px;margin:14px 0}.steps div{flex:1;text-align:center;font-size:12px;padding:8px 2px;border-radius:8px;background:var(--bg);border:1px solid var(--b)}.steps .d{background:var(--p);color:#fff;border-color:var(--p)}
+.ok{background:#e6f9ee;color:#0a6b35;padding:12px;border-radius:10px;margin-top:12px}.er{background:#fde8e8;color:#9b1c1c;padding:12px;border-radius:10px;margin-top:12px}
+#map{height:340px;border-radius:12px}.bar{background:var(--p);height:14px;border-radius:4px;display:inline-block;vertical-align:middle}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1;min-width:130px}
+</style></head><body>
+<header><div class="w"><div class="top"><span class="logo" id="logo"></span>
+<span class="lang"><button data-l="gu">ગુ</button> <button data-l="hi">हि</button> <button data-l="en">EN</button></span></div>
+<nav id="nav"></nav></div></header>
+<main class="w" id="app"></main><footer class="w m" id="foot"></footer>
+<script>
+// ====== 1. PASTE YOUR SUPABASE DETAILS HERE (Project Settings > API) ======
+const SB_URL="https://dpbwmhrtwygbolannxqk.supabase.co", SB_KEY="sb_publishable_SUo59lLLvDbnhnu3t5Y-rw_e4spc3Z2";
+const CONTACT={phone:"+91 00000 00000",email:"your-email@example.com"};
+const VIL=["Waghodia","Limda","Pipaliya","Other"]; // replace with your real village list
+// ===========================================================================
+const ok=!SB_URL.startsWith("PASTE");const sb=ok?supabase.createClient(SB_URL,SB_KEY):null;
+const T={
+gu:{app:"વાઘોડિયા જન સંવાદ",home:"હોમ",report:"સમસ્યા નોંધાવો",track:"ફરિયાદ ટ્રેક",issues:"જાહેર સમસ્યાઓ",work:"અમારું કામ",vision:"વિઝન 2030",about:"અમારા વિશે",admin:"એડમિન",
+hero:"તમારી સમસ્યા નોંધાવો",sub:"રોડ, પાણી, ગટર, વીજળી — સમસ્યા જણાવો અને પ્રગતિ જુઓ.",
+name:"નામ",mobile:"મોબાઇલ નંબર",village:"ગામ / વિસ્તાર",cat:"સમસ્યાનો પ્રકાર",desc:"સમસ્યાની વિગત",file:"ફોટો / વીડિયો (દરેક મહત્તમ 15MB)",loc:"મારું લોકેશન શેર કરો",locok:"લોકેશન મળ્યું ✓",
+consent:"હું સંમત છું કે મારી માહિતી ફક્ત ફરિયાદ નિવારણ માટે વપરાશે અને જાહેર કરાશે નહીં.",submit:"ફરિયાદ મોકલો",wait:"મોકલી રહ્યા છીએ…",done:"ફરિયાદ નોંધાઈ ગઈ! તમારો ફરિયાદ ID (સાચવી રાખો):",cid:"ફરિયાદ ID",find:"શોધો",nf:"ફરિયાદ મળી નથી",err:"કંઈક ખોટું થયું. ફરી પ્રયાસ કરો.",
+total:"કુલ ફરિયાદ",resolved:"ઉકેલાઈ",followup:"ફોલો-અપમાં",pending:"બાકી",st:["નોંધાઈ","ચકાસાઈ","કાર્યવાહી","ઉકેલાઈ"],
+action:"કાર્યવાહી",result:"પરિણામ",nowork:"હજી કોઈ ઉકેલાયેલ કામ નથી.",map:"સમસ્યાનો નકશો (અંદાજિત સ્થાન, ખાનગી માહિતી વગર)",bef:"પહેલાં",aft:"પછી",
+about:"વાઘોડિયા વિસ્તારના નાગરિકો માટે પારદર્શક ફરિયાદ નિવારણ પ્લેટફોર્મ.",priv:"ગોપનીયતા: તમારું નામ, મોબાઇલ, સરનામું અને ફાઇલો સુરક્ષિત રહે છે અને જાહેર થતા નથી. ફક્ત સમસ્યાનો પ્રકાર, ગામ, સ્થિતિ અને અંદાજિત સ્થાન દેખાય છે.",contact:"સંપર્ક",cfg:"સાઇટ હજી Supabase સાથે જોડાઈ નથી (index.html માં SB_URL ભરો)."},
+hi:{app:"वाघोडिया जन संवाद",home:"होम",report:"समस्या दर्ज करें",track:"शिकायत ट्रैक",issues:"सार्वजनिक समस्याएँ",work:"हमारा कार्य",vision:"विज़न 2030",about:"हमारे बारे में",admin:"एडमिन",
+hero:"अपनी समस्या दर्ज करें",sub:"सड़क, पानी, नाली, बिजली — समस्या बताएँ और प्रगति देखें।",
+name:"नाम",mobile:"मोबाइल नंबर",village:"गाँव / क्षेत्र",cat:"समस्या का प्रकार",desc:"समस्या का विवरण",file:"फोटो / वीडियो (प्रत्येक अधिकतम 15MB)",loc:"मेरी लोकेशन साझा करें",locok:"लोकेशन मिली ✓",
+consent:"मैं सहमत हूँ कि मेरी जानकारी केवल शिकायत निवारण के लिए उपयोग होगी और सार्वजनिक नहीं की जाएगी।",submit:"शिकायत भेजें",wait:"भेज रहे हैं…",done:"शिकायत दर्ज हो गई! आपकी शिकायत ID (सुरक्षित रखें):",cid:"शिकायत ID",find:"खोजें",nf:"शिकायत नहीं मिली",err:"कुछ गड़बड़ हुई। फिर प्रयास करें।",
+total:"कुल शिकायतें",resolved:"हल हुईं",followup:"फॉलो-अप में",pending:"लंबित",st:["दर्ज","सत्यापित","कार्यवाही","हल"],
+action:"कार्यवाही",result:"परिणाम",nowork:"अभी कोई हल किया गया कार्य नहीं।",map:"समस्या मानचित्र (अनुमानित स्थान, निजी जानकारी के बिना)",bef:"पहले",aft:"बाद में",
+about:"वाघोडिया क्षेत्र के नागरिकों के लिए पारदर्शी शिकायत निवारण मंच।",priv:"गोपनीयता: आपका नाम, मोबाइल, पता और फाइलें सुरक्षित रहती हैं और सार्वजनिक नहीं होतीं। केवल समस्या का प्रकार, गाँव, स्थिति और अनुमानित स्थान दिखता है।",contact:"संपर्क",cfg:"साइट अभी Supabase से जुड़ी नहीं है (index.html में SB_URL भरें)।"},
+en:{app:"Waghodia Jan Samvad",home:"Home",report:"Report a Problem",track:"Track Complaint",issues:"Public Issues",work:"Our Work",vision:"Vision 2030",about:"About",admin:"Admin",
+hero:"Report Your Problem",sub:"Roads, water, drainage, electricity — tell us and follow the progress.",
+name:"Name",mobile:"Mobile number",village:"Village / Area",cat:"Problem category",desc:"Describe the problem",file:"Photos / Videos (max 15MB each)",loc:"Share my location",locok:"Location captured ✓",
+consent:"I agree my details will be used only to resolve this complaint and will not be made public.",submit:"Submit complaint",wait:"Submitting…",done:"Complaint submitted! Your Complaint ID (keep it safe):",cid:"Complaint ID",find:"Find",nf:"Complaint not found",err:"Something went wrong. Please try again.",
+total:"Total",resolved:"Resolved",followup:"Under follow-up",pending:"Pending",st:["Submitted","Verified","Follow-up","Resolved"],
+action:"Action taken",result:"Result",nowork:"No resolved work published yet.",map:"Issue map (approximate locations, no private data)",bef:"Before",aft:"After",
+about:"A transparent grievance-management platform for the people of Waghodia.",priv:"Privacy: your name, mobile, address and files are kept secure and never shown publicly. Only category, village, status and an approximate location are visible.",contact:"Contact",cfg:"Site is not connected to Supabase yet (fill SB_URL in index.html)."}};
+const CATS=[["Roads","રોડ","सड़क"],["Drainage","ગટર","नाली"],["Drinking Water","પીવાનું પાણી","पेयजल"],["Electricity","વીજળી","बिजली"],["Education","શિક્ષણ","शिक्षा"],["Healthcare","આરોગ્ય","स्वास्थ्य"],["Transport","પરિવહન","परिवहन"],["Agriculture","ખેતી","कृषि"],["Employment","રોજગાર","रोज़गार"],["Government Services","સરકારી સેવાઓ","सरकारी सेवाएँ"],["Other","અન્ય","अन्य"]];
+const VIS=[["Infrastructure","માળખાકીય સુવિધાઓ","बुनियादी ढाँचा"],["Roads & Drainage","રોડ અને ગટર","सड़क और नाली"],["Water","પાણી","जल"],["Education","શિક્ષણ","शिक्षा"],["Healthcare","આરોગ્ય","स्वास्थ्य"],["Youth & Employment","યુવા અને રોજગાર","युवा और रोज़गार"],["Agriculture","ખેતી","कृषि"],["Village Development","ગામ વિકાસ","ग्राम विकास"]];
+let lg=localStorage.wjl||"gu",geo=null,t0=0,map=null,A=[],user=null;
+const LI={en:0,gu:1,hi:2},t=k=>T[lg][k],$=id=>document.getElementById(id);
+const cn=c=>CATS.find(x=>x[0]==c)?.[LI[lg]]||c;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const R=["home","report","track","issues","work","vision","about","admin"];
+const statBox=()=>`<div class="grid g4">${["total","resolved","followup","pending"].map(k=>`<div class="card stat"><b id="s_${k}">–</b>${t(k)}</div>`).join("")}</div>`;
+async function fillStats(){if(!ok)return;const{data}=await sb.rpc("public_stats");if(data)for(const k in data){const e=$("s_"+k);if(e)e.textContent=data[k]}}
+const V={
+home:()=>`<div class="card"><h1>${t("hero")}</h1><p class="m">${t("sub")}</p><a class="btn" href="#report">${t("report")}</a></div>${statBox()}<div class="row"><a class="btn s" href="#track">${t("track")}</a><a class="btn s" href="#issues">${t("issues")}</a><a class="btn s" href="#work">${t("work")}</a></div>`,
+report:()=>`<div class="card"><h2>${t("report")}</h2><form id="f">
+<label>${t("name")}</label><input id="n" required minlength="2" maxlength="100">
+<label>${t("mobile")}</label><input id="m" type="tel" inputmode="numeric" pattern="[6-9][0-9]{9}" maxlength="10" required>
+<label>${t("village")}</label><select id="v">${VIL.map(v=>`<option>${v}</option>`).join("")}</select>
+<label>${t("cat")}</label><select id="c">${CATS.map(c=>`<option value="${c[0]}">${c[LI[lg]]}</option>`).join("")}</select>
+<label>${t("desc")}</label><textarea id="d" rows="4" required minlength="5" maxlength="2000"></textarea>
+<label>${t("file")}</label><input type="file" id="fi" accept="image/*,video/mp4" multiple>
+<p><button type="button" class="btn s" id="g">📍 ${t("loc")}</button> <span id="gs" class="m"></span></p>
+<input id="hp" tabindex="-1" autocomplete="off" style="display:none">
+<label style="font-weight:400"><input type="checkbox" id="k" required style="width:auto"> ${t("consent")}</label><br>
+<button class="btn" id="sb">${t("submit")}</button></form><div id="r"></div></div>`,
+track:()=>`<div class="card"><h2>${t("track")}</h2><label>${t("cid")}</label><input id="q" placeholder="WJ-XXXXXXXX"><br><br><button class="btn" id="qb">${t("find")}</button><div id="r"></div></div>`,
+issues:()=>`${statBox()}<div class="card"><h2>${t("map")}</h2><div id="map"></div></div><div class="card" id="ch"></div>`,
+work:()=>`<h2>${t("work")}</h2><div id="wk"></div>`,
+vision:()=>`<h2>${t("vision")}</h2><div class="grid g4">${VIS.map((v,i)=>`<div class="card"><span style="font-size:28px">${["🏗","🛣","💧","🎓","🏥","💼","🌾","🏘"][i]}</span><br><b>${v[LI[lg]]}</b></div>`).join("")}</div>`,
+about:()=>`<div class="card"><h2>${t("about")}</h2><p>${t("about")}</p><p>🔒 ${t("priv")}</p><p><b>${t("contact")}:</b> ${CONTACT.phone} · ${CONTACT.email}</p></div>`,
+admin:()=>`<div id="ad"></div>`};
+const AFTER={
+home:fillStats,
+async report(){
+ t0=Date.now();
+ $("g").onclick=()=>navigator.geolocation?.getCurrentPosition(r=>{geo=[r.coords.latitude,r.coords.longitude];$("gs").textContent=t("locok")});
+ $("f").onsubmit=async e=>{e.preventDefault();if($("hp").value||Date.now()-t0<4000)return;
+  $("sb").disabled=true;$("sb").textContent=t("wait");
+  try{const paths=[],folder=crypto.randomUUID();
+   for(const[i,f]of[...$("fi").files].entries()){const p=`${folder}/${i}-${f.name.replace(/[^\w.\-]/g,"_")}`;
+    const{error}=await sb.storage.from("complaint-media").upload(p,f);if(error)throw error;paths.push(p)}
+   const{data,error}=await sb.rpc("submit_complaint",{p_name:$("n").value,p_phone:$("m").value,p_village:$("v").value,p_cat:$("c").value,p_desc:$("d").value,p_lat:geo?geo[0]:null,p_lng:geo?geo[1]:null,p_media:paths});
+   if(error)throw error;
+   $("r").innerHTML=`<div class="ok">${t("done")} <b style="font-size:22px">${esc(data)}</b><br><a href="https://wa.me/?text=${encodeURIComponent(t("cid")+": "+data)}" target="_blank" rel="noopener">WhatsApp ↗</a></div>`;$("f").reset();geo=null;$("gs").textContent="";
+  }catch(x){$("r").innerHTML=`<div class="er">${t("err")}</div>`}
+  $("sb").disabled=false;$("sb").textContent=t("submit")};
+},
+track(){$("qb").onclick=async()=>{const{data}=await sb.rpc("track_complaint",{p_cid:$("q").value});const x=data?.[0];
+ $("r").innerHTML=x?`<div class="steps">${t("st").map((s,i)=>`<div class="${i<=x.status?"d":""}">${s}</div>`).join("")}</div><p>${esc(cn(x.category))} · ${esc(x.village)} · ${x.created_at.slice(0,10)}</p>${x.action?`<p>🛠 ${esc(x.action)}</p>`:""}`:`<p>${t("nf")}</p>`}},
+async issues(){fillStats();const{data=[]}=await sb.rpc("public_issues");
+ map=L.map("map").setView([22.30,73.65],11);L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+ const col=["#e03131","#f08c00","#f08c00","#2f9e44"];
+ data.filter(x=>x.lat).forEach(x=>L.circleMarker([x.lat,x.lng],{radius:8,color:col[x.status],fillOpacity:.7}).addTo(map).bindPopup(`${esc(cn(x.category))}<br>${esc(x.village)} · ${t("st")[x.status]}`));
+ const cnt={};data.forEach(x=>cnt[x.category]=(cnt[x.category]||0)+1);const mx=Math.max(1,...Object.values(cnt));
+ $("ch").innerHTML=Object.entries(cnt).map(([k,v])=>`<div>${esc(cn(k))} <span class="bar" style="width:${v/mx*50}%"></span> ${v}</div>`).join("")},
+async work(){const{data=[]}=await sb.rpc("public_work");
+ $("wk").innerHTML=data.map(x=>`<div class="card"><b>${esc(x.title||cn(x.category))}</b> <span class="m">· ${esc(x.village)} · 📅 ${x.resolved_at||""}</span>
+ <p>🛠 <b>${t("action")}:</b> ${esc(x.action)}</p><p>✅ <b>${t("result")}:</b> ${esc(x.result)}</p>
+ <div class="grid">${x.before_img?`<div><span class="m">${t("bef")}</span><img src="${esc(x.before_img)}" style="width:100%;border-radius:8px"></div>`:""}${x.after_img?`<div><span class="m">${t("aft")}</span><img src="${esc(x.after_img)}" style="width:100%;border-radius:8px"></div>`:""}</div></div>`).join("")||`<p>${t("nowork")}</p>`},
+admin:adminInit};
+// ================= ADMIN (English, team only) =================
+async function adminInit(){const w=$("ad");
+ const{data:{session}}=await sb.auth.getSession();user=session?.user;
+ if(!user){w.innerHTML=`<div class="card"><h2>Admin login</h2><label>Email</label><input id="ae" type="email"><label>Password</label><input id="ap" type="password"><br><br><button class="btn" id="al">Login</button><div id="ar"></div></div>`;
+  $("al").onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$("ae").value,password:$("ap").value});error?$("ar").innerHTML=`<div class="er">${esc(error.message)}</div>`:adminInit()};return}
+ const{data,error}=await sb.from("complaints").select("*").order("created_at",{ascending:false}).limit(2000);
+ if(error){w.innerHTML=`<div class="er">No access. Add your user to the profiles table.</div>`;return}
+ A=data;drawAdmin()}
+function drawAdmin(){const w=$("ad"),f=v=>$(v)?.value||"";const S={fs:f("fs"),fv:f("fv"),fc:f("fc"),fm:f("fm"),fq:f("fq")};
+ const rows=A.filter(x=>(!S.fs||x.status==S.fs)&&(!S.fv||x.village==S.fv)&&(!S.fc||x.category==S.fc)&&(!S.fm||x.created_at.startsWith(S.fm))&&(!S.fq||(x.cid+x.name+x.phone).toLowerCase().includes(S.fq.toLowerCase())));
+ const cc={};A.forEach(x=>cc[x.category]=(cc[x.category]||0)+1);const mx=Math.max(1,...Object.values(cc));
+ w.innerHTML=`<div class="card"><div class="row"><b>Total ${A.length} · Resolved ${A.filter(x=>x.status==3).length} · Pending ${A.filter(x=>x.status==0).length}</b><button class="btn s" id="lo">Logout</button></div>
+ ${Object.entries(cc).map(([k,v])=>`<div class="m">${esc(k)} <span class="bar" style="width:${v/mx*40}%"></span> ${v}</div>`).join("")}</div>
+ <div class="card"><div class="row"><select id="fs"><option value="">All status</option>${T.en.st.map((s,i)=>`<option value="${i}">${s}</option>`).join("")}</select>
+ <select id="fv"><option value="">All villages</option>${VIL.map(v=>`<option>${v}</option>`).join("")}</select>
+ <select id="fc"><option value="">All categories</option>${CATS.map(c=>`<option>${c[0]}</option>`).join("")}</select>
+ <input id="fm" type="month"><input id="fq" placeholder="Search ID / name / phone"></div><br><button class="btn s" id="fa">Apply filters</button> <button class="btn s" id="ex">Export CSV (current filter / month)</button></div>`+
+ rows.map(x=>`<div class="card" data-id="${x.id}"><b>${esc(x.cid)}</b> · ${esc(x.village)} · ${esc(x.category)} · <span class="m">${x.created_at.slice(0,10)}</span>
+ <p>${esc(x.description)}</p><p class="m">👤 ${esc(x.name)} · 📞 ${esc(x.phone)} ${x.lat?`· <a href="https://www.openstreetmap.org/?mlat=${x.lat}&mlon=${x.lng}#map=17/${x.lat}/${x.lng}" target="_blank" rel="noopener">📍 map</a>`:""} ${x.media?.length?`· <a href="#" class="vm">📎 ${x.media.length} files</a>`:""}</p><div class="mw"></div>
+ <div class="row"><select name="status">${T.en.st.map((s,i)=>`<option value="${i}" ${x.status==i?"selected":""}>${s}</option>`).join("")}</select><input name="assigned_to" placeholder="Assigned to" value="${esc(x.assigned_to)}"></div>
+ <input name="note" placeholder="Internal note" value="${esc(x.note)}" style="margin-top:8px"><input name="action" placeholder="Action taken (public if published)" value="${esc(x.action)}" style="margin-top:8px">
+ <input name="result" placeholder="Result" value="${esc(x.result)}" style="margin-top:8px"><input name="public_title" placeholder="Public title for Our Work" value="${esc(x.public_title)}" style="margin-top:8px">
+ <div class="row"><div><span class="m">Before photo</span><input type="file" name="bf" accept="image/*"></div><div><span class="m">After photo</span><input type="file" name="af" accept="image/*"></div></div>
+ <label style="font-weight:400"><input type="checkbox" name="published" style="width:auto" ${x.published?"checked":""}> Publish in "Our Work" (only when Resolved)</label><button class="btn s sv">Save</button> <span class="m ms"></span></div>`).join("");
+ for(const k in S)$(k).value=S[k];
+ $("fa").onclick=drawAdmin;
+ $("lo").onclick=async()=>{await sb.auth.signOut();adminInit()};
+ $("ex").onclick=()=>{const q=s=>'"'+String(s??"").replace(/"/g,'""')+'"';
+  const csv="CID,Date,Name,Phone,Village,Category,Description,Status,Assigned,Note,Action,Result,Lat,Lng\n"+rows.map(x=>[x.cid,x.created_at.slice(0,10),x.name,x.phone,x.village,x.category,x.description,T.en.st[x.status],x.assigned_to,x.note,x.action,x.result,x.lat,x.lng].map(q).join(",")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv"}));a.download="complaints.csv";a.click()};
+ w.querySelectorAll(".vm").forEach(a=>a.onclick=async e=>{e.preventDefault();const c=a.closest(".card"),x=A.find(y=>y.id==c.dataset.id);
+  const{data}=await sb.storage.from("complaint-media").createSignedUrls(x.media,600);
+  c.querySelector(".mw").innerHTML=(data||[]).map(d=>/\.mp4$/i.test(d.path)?`<video src="${d.signedUrl}" controls style="width:100%;max-width:300px"></video>`:`<a href="${d.signedUrl}" target="_blank" rel="noopener"><img src="${d.signedUrl}" style="width:120px;border-radius:8px;margin:4px"></a>`).join("")});
+ w.querySelectorAll(".sv").forEach(b=>b.onclick=async()=>{const c=b.closest(".card"),id=c.dataset.id,g=n=>c.querySelector(`[name=${n}]`),ms=c.querySelector(".ms");
+  ms.textContent="Saving…";
+  try{const u={status:+g("status").value,assigned_to:g("assigned_to").value,note:g("note").value,action:g("action").value,result:g("result").value,public_title:g("public_title").value,published:g("published").checked};
+   for(const[n,col]of[["bf","before_img"],["af","after_img"]]){const f=g(n).files[0];if(f){const p=`${id}/${n}-${Date.now()}-${f.name.replace(/[^\w.\-]/g,"_")}`;
+    const{error}=await sb.storage.from("public-work").upload(p,f);if(error)throw error;u[col]=sb.storage.from("public-work").getPublicUrl(p).data.publicUrl}}
+   const{error}=await sb.from("complaints").update(u).eq("id",id);if(error)throw error;
+   Object.assign(A.find(y=>y.id==id),u);ms.textContent="Saved ✓"}catch(x){ms.textContent="Error: "+(x.message||x)}})}
+// ================= ROUTER =================
+async function page(){const h=(location.hash||"#home").slice(1),p=R.includes(h)?h:"home";
+ document.documentElement.lang=lg;$("logo").textContent=t("app");
+ document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.l==lg));
+ $("nav").innerHTML=R.map(r=>`<a href="#${r}" class="${r==p?"on":""}">${t(r)}</a>`).join("");
+ $("foot").innerHTML=`<p>🔒 ${t("priv")}</p>`;
+ if(map){map.remove();map=null}
+ $("app").innerHTML=(ok?"":`<div class="er">${t("cfg")}</div>`)+V[p]();
+ if(ok)await AFTER[p]?.()}
+document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>{lg=b.dataset.l;try{localStorage.wjl=lg}catch(e){}page()});
+addEventListener("hashchange",page);page();
+</script></body></html>
